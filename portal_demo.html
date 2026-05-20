@@ -3,122 +3,133 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>無人化ポータル（カーソル周辺だけ無人画像に差し替え）デモ</title>
+  <title>無人化ポータル（固定画像・スマホ縦長固定）</title>
   <style>
     body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:20px;}
     .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;}
     .card{border:1px solid #ddd;border-radius:12px;padding:12px;box-shadow:0 1px 8px rgba(0,0,0,.05);}
     canvas{border:1px solid #ccc;border-radius:12px;max-width:100%;height:auto;}
     label{display:block;margin:8px 0 4px;font-size:14px;}
-    input[type="range"]{width:260px;}
-    .hint{color:#555;font-size:13px;line-height:1.5;max-width:780px;}
+    input[type="range"]{width:290px;}
+    .hint{color:#555;font-size:13px;line-height:1.55;max-width:920px;}
     .small{font-size:12px;color:#666;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;}
     button{padding:8px 10px;border:1px solid #ccc;border-radius:10px;background:#fff;cursor:pointer;}
     button:hover{background:#f6f6f6;}
+    .warn{color:#8a5a00;background:#fff7e6;border:1px solid #ffe0a3;padding:10px;border-radius:12px;}
+    .pill{display:inline-block;padding:2px 8px;border:1px solid #ddd;border-radius:999px;font-size:12px;color:#555;background:#fafafa;}
   </style>
 </head>
 <body>
-  <h2>無人化ポータル（PCデモ）</h2>
+  <h2>無人化ポータル（固定画像・スマホ縦長固定）</h2>
   <p class="hint">
-    「PC画面＝現実」「カーソル周辺＝スマホ画面」という仮定で、<b>人混み画像（ベース）</b>の上に、<b>無人画像</b>をカーソル周辺だけ差し替えて表示します。<br>
-    まずは 2枚の画像を読み込んでください（同じ場所・同じ構図だと綺麗に見えます）。
+    HTMLを開くと、同じフォルダにある <span class="mono">crowd.jpg</span>（人混み）と <span class="mono">cleanplate.jpg</span>（無人）を自動で読み込みます。<br>
+    ポータルは <span class="pill">縦長スマホ比率の長方形</span> に固定、<span class="pill">縁ぼかし=0</span>、<span class="pill">カーソル周辺だけ無人化</span> に固定です。
   </p>
 
+  <div class="warn small" style="max-width:920px;margin-bottom:14px;">
+    画像が表示されない場合：ファイル名（大小文字含む）と拡張子を確認して再読み込みしてください。<br>
+    拡張子が違う場合は、下のコード先頭の <span class="mono">CROWD_SRC</span> / <span class="mono">CLEANPLATE_SRC</span> を修正してください。
+  </div>
+
   <div class="row">
-    <div class="card">
-      <label>1) 人混みの画像（ベース）</label>
-      <input id="crowdFile" type="file" accept="image/*" />
+    <div class="card" style="min-width:360px;">
+      <div class="small"><b>固定設定</b>：形状=縦長長方形 / フェザー=0 / モード=ポータル</div>
 
-      <label>2) 無人の画像（Clean Plate）</label>
-      <input id="emptyFile" type="file" accept="image/*" />
+      <label>スマホ枠の幅（px）: <span id="phoneWLabel">160</span></label>
+      <input id="phoneW" type="range" min="80" max="260" value="160" />
+      <div class="small">高さはスマホ比率（9:19.5）で自動計算します。</div>
 
-      <label>ポータル半径（px）: <span id="radiusLabel">80</span></label>
-      <input id="radius" type="range" min="20" max="240" value="80" />
+      <hr style="border:none;border-top:1px solid #eee;margin:12px 0;" />
+      <div class="small"><b>位置合わせ（無人画像側）</b>：ネット画像のズレ調整用</div>
 
-      <label>縁のぼかし（フェザー）（px）: <span id="featherLabel">18</span></label>
-      <input id="feather" type="range" min="0" max="100" value="18" />
-
-      <label>ポータル形状</label>
-      <select id="shape">
-        <option value="circle" selected>円（おすすめ）</option>
-        <option value="rect">四角</option>
-      </select>
-
-      <label>表示モード</label>
-      <select id="mode">
-        <option value="portal" selected>カーソル周辺だけ無人化</option>
-        <option value="wipe">左右ワイプ（比較用）</option>
-        <option value="toggle">全体トグル（比較用）</option>
-      </select>
-
-      <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap;">
-        <button id="fitBtn" type="button">キャンバスに合わせて表示</button>
-        <button id="downloadBtn" type="button">スクショ保存（PNG）</button>
-        <span class="small">※マウスをキャンバス上で動かして確認</span>
+      <div class="grid">
+        <div>
+          <label>ΔX（px）: <span id="dxLabel">0</span></label>
+          <input id="dx" type="range" min="-250" max="250" value="0" />
+        </div>
+        <div>
+          <label>ΔY（px）: <span id="dyLabel">0</span></label>
+          <input id="dy" type="range" min="-250" max="250" value="0" />
+        </div>
       </div>
 
+      <label>拡大率: <span id="scaleLabel">1.00</span></label>
+      <input id="scale" type="range" min="80" max="125" value="100" />
+      <div class="small">（0.80〜1.25）</div>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap;">
+        <button id="fitBtn" type="button">キャンバスに合わせて表示</button>
+        <button id="resetAlignBtn" type="button">位置合わせリセット</button>
+        <button id="downloadBtn" type="button">スクショ保存（PNG）</button>
+      </div>
+
+      <p class="small" style="margin-top:10px;max-width:520px;">
+        ヒント：ズレが目立つ場合は、スマホ枠を少し小さめにすると自然に見えます。<br>
+        <span class="mono">[</span>/<span class="mono">]</span> でスマホ幅を微調整できます。
+      </p>
     </div>
 
     <div class="card">
       <canvas id="canvas" width="960" height="540"></canvas>
-      <div class="small" id="status" style="margin-top:8px;">画像を読み込むとここに表示されます。</div>
+      <div class="small" id="status" style="margin-top:8px;">画像読み込み中…</div>
     </div>
   </div>
 
 <script>
 (() => {
+  // ========= ここだけ変更すれば画像差し替えできます =========
+  const CROWD_SRC = './crowd.jpg';
+  const CLEANPLATE_SRC = './cleanplate.jpg';
+  // ============================================================
+
+  // 固定設定
+  const FEATHER = 0;          // 縁ぼかし（固定）
+  const PHONE_ASPECT = 19.5 / 9.0; // 縦/横（スマホっぽい比率）
+
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
 
-  const crowdFile = document.getElementById('crowdFile');
-  const emptyFile = document.getElementById('emptyFile');
-  const radius = document.getElementById('radius');
-  const feather = document.getElementById('feather');
-  const radiusLabel = document.getElementById('radiusLabel');
-  const featherLabel = document.getElementById('featherLabel');
-  const shape = document.getElementById('shape');
-  const mode = document.getElementById('mode');
   const status = document.getElementById('status');
   const fitBtn = document.getElementById('fitBtn');
   const downloadBtn = document.getElementById('downloadBtn');
+  const resetAlignBtn = document.getElementById('resetAlignBtn');
+
+  const phoneW = document.getElementById('phoneW');
+  const phoneWLabel = document.getElementById('phoneWLabel');
+
+  const dx = document.getElementById('dx');
+  const dy = document.getElementById('dy');
+  const scale = document.getElementById('scale');
+  const dxLabel = document.getElementById('dxLabel');
+  const dyLabel = document.getElementById('dyLabel');
+  const scaleLabel = document.getElementById('scaleLabel');
 
   const crowdImg = new Image();
   const emptyImg = new Image();
+  crowdImg.crossOrigin = 'anonymous';
+  emptyImg.crossOrigin = 'anonymous';
 
   let hasCrowd = false, hasEmpty = false;
-  let mouse = {x: canvas.width/2, y: canvas.height/2, inside:false};
-  let showEmptyAll = false;
+  let mouse = {x: canvas.width/2, y: canvas.height/2};
 
-  // offscreen for masking
   const off = document.createElement('canvas');
   const offCtx = off.getContext('2d');
 
   function setStatus(msg){ status.textContent = msg; }
 
-  function loadImageFromFile(input, img, onReady){
-    const file = input.files && input.files[0];
-    if(!file) return;
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      onReady();
-    };
-    img.src = url;
-  }
-
   function resizeCanvasToFit(){
-    // Fit to crowd image if available, otherwise keep default
     const base = hasCrowd ? crowdImg : (hasEmpty ? emptyImg : null);
     if(!base) return;
 
-    // Limit huge images for performance
     const maxW = 1280;
     const maxH = 720;
     let w = base.naturalWidth;
     let h = base.naturalHeight;
-    const scale = Math.min(maxW / w, maxH / h, 1);
-    w = Math.round(w * scale);
-    h = Math.round(h * scale);
+    const s = Math.min(maxW / w, maxH / h, 1);
+    w = Math.round(w * s);
+    h = Math.round(h * s);
 
     canvas.width = w;
     canvas.height = h;
@@ -127,164 +138,151 @@
     mouse.x = w/2; mouse.y = h/2;
   }
 
+  function drawEmptyAligned(targetCtx){
+    const s = Number(scale.value) / 100.0;
+    const tx = Number(dx.value);
+    const ty = Number(dy.value);
+
+    targetCtx.save();
+    const cx = off.width/2;
+    const cy = off.height/2;
+    targetCtx.translate(cx + tx, cy + ty);
+    targetCtx.scale(s, s);
+    targetCtx.translate(-cx, -cy);
+    targetCtx.drawImage(emptyImg, 0, 0, off.width, off.height);
+    targetCtx.restore();
+  }
+
+  function getPhoneRect(){
+    const w = Number(phoneW.value);
+    const h = Math.round(w * PHONE_ASPECT);
+    // clamp to canvas bounds
+    const x = Math.round(mouse.x - w/2);
+    const y = Math.round(mouse.y - h/2);
+    return {x, y, w, h};
+  }
+
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    if(!(hasCrowd || hasEmpty)){
-      // Placeholder
+    if(!(hasCrowd && hasEmpty)){
       ctx.fillStyle = '#fafafa';
       ctx.fillRect(0,0,canvas.width,canvas.height);
       ctx.fillStyle = '#777';
       ctx.font = '16px system-ui';
-      ctx.fillText('画像を読み込んでください', 20, 32);
+      ctx.fillText('画像読み込み中…', 20, 32);
       requestAnimationFrame(draw);
       return;
     }
 
-    // Base layer
-    const baseImg = (showEmptyAll && hasEmpty) ? emptyImg : (hasCrowd ? crowdImg : emptyImg);
-    ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
+    // base: crowd
+    ctx.drawImage(crowdImg, 0, 0, canvas.width, canvas.height);
 
-    if(hasEmpty && mode.value === 'portal'){
-      // Create portal mask and composite empty image inside
-      const r = Number(radius.value);
-      const f = Number(feather.value);
+    // offscreen: aligned clean plate
+    offCtx.clearRect(0,0,off.width,off.height);
+    drawEmptyAligned(offCtx);
 
-      offCtx.clearRect(0,0,off.width,off.height);
-      // draw empty image full
-      offCtx.drawImage(emptyImg, 0, 0, off.width, off.height);
+    // mask with phone rectangle (no feather)
+    const r = getPhoneRect();
+    offCtx.globalCompositeOperation = 'destination-in';
+    offCtx.fillStyle = 'rgba(255,255,255,1)';
+    offCtx.fillRect(r.x, r.y, r.w, r.h);
+    offCtx.globalCompositeOperation = 'source-over';
 
-      // Apply mask
-      offCtx.globalCompositeOperation = 'destination-in';
-      offCtx.beginPath();
-      if(shape.value === 'circle'){
-        // feather via radial gradient
-        const g = offCtx.createRadialGradient(mouse.x, mouse.y, Math.max(0, r - f), mouse.x, mouse.y, r);
-        g.addColorStop(0, 'rgba(255,255,255,1)');
-        g.addColorStop(1, 'rgba(255,255,255,0)');
-        offCtx.fillStyle = g;
-        offCtx.arc(mouse.x, mouse.y, r, 0, Math.PI*2);
-        offCtx.fill();
-      } else {
-        // rect + feather using gradient edges (simple approximation)
-        const x0 = mouse.x - r;
-        const y0 = mouse.y - r;
-        const w = r*2;
-        const h = r*2;
-        // draw hard rect then blur edges by drawing a bigger gradient rect
-        offCtx.rect(x0, y0, w, h);
-        offCtx.fillStyle = 'rgba(255,255,255,1)';
-        offCtx.fill();
-        if(f>0){
-          offCtx.globalCompositeOperation = 'destination-in';
-          const gx = offCtx.createLinearGradient(x0 - f, 0, x0 + f, 0);
-          gx.addColorStop(0, 'rgba(255,255,255,0)');
-          gx.addColorStop(1, 'rgba(255,255,255,1)');
-          offCtx.fillStyle = gx;
-          offCtx.fillRect(x0 - f, y0 - f, f*2, h + f*2);
+    // composite portal
+    ctx.drawImage(off, 0, 0);
 
-          const gx2 = offCtx.createLinearGradient(x0 + w - f, 0, x0 + w + f, 0);
-          gx2.addColorStop(0, 'rgba(255,255,255,1)');
-          gx2.addColorStop(1, 'rgba(255,255,255,0)');
-          offCtx.fillStyle = gx2;
-          offCtx.fillRect(x0 + w - f, y0 - f, f*2, h + f*2);
-
-          const gy = offCtx.createLinearGradient(0, y0 - f, 0, y0 + f);
-          gy.addColorStop(0, 'rgba(255,255,255,0)');
-          gy.addColorStop(1, 'rgba(255,255,255,1)');
-          offCtx.fillStyle = gy;
-          offCtx.fillRect(x0 - f, y0 - f, w + f*2, f*2);
-
-          const gy2 = offCtx.createLinearGradient(0, y0 + h - f, 0, y0 + h + f);
-          gy2.addColorStop(0, 'rgba(255,255,255,1)');
-          gy2.addColorStop(1, 'rgba(255,255,255,0)');
-          offCtx.fillStyle = gy2;
-          offCtx.fillRect(x0 - f, y0 + h - f, w + f*2, f*2);
-        }
-      }
-      offCtx.closePath();
-      offCtx.globalCompositeOperation = 'source-over';
-
-      // composite portal onto main
-      ctx.drawImage(off, 0, 0);
-
-      // draw portal outline for clarity
-      ctx.save();
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      if(shape.value === 'circle') ctx.arc(mouse.x, mouse.y, r, 0, Math.PI*2);
-      else ctx.rect(mouse.x-r, mouse.y-r, r*2, r*2);
-      ctx.stroke();
-      ctx.restore();
-
-    } else if(hasEmpty && mode.value === 'wipe'){
-      // compare mode: left=crowd right=empty by cursor position
-      const cut = Math.round(mouse.x);
-      if(hasCrowd){
-        ctx.drawImage(emptyImg, cut, 0, canvas.width-cut, canvas.height, cut, 0, canvas.width-cut, canvas.height);
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.beginPath();
-        ctx.moveTo(cut, 0); ctx.lineTo(cut, canvas.height);
-        ctx.stroke();
-        ctx.restore();
-      }
-    } else if(hasEmpty && mode.value === 'toggle'){
-      // nothing else, base already toggles
-    }
+    // outline (smartphone frame)
+    ctx.save();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    // round corners a bit to feel like a phone
+    const radius = 14;
+    const x = r.x, y = r.y, w = r.w, h = r.h;
+    roundRect(ctx, x, y, w, h, radius);
+    ctx.stroke();
+    ctx.restore();
 
     requestAnimationFrame(draw);
   }
 
-  // Events
+  function roundRect(c, x, y, w, h, r){
+    const rr = Math.min(r, w/2, h/2);
+    c.beginPath();
+    c.moveTo(x+rr, y);
+    c.arcTo(x+w, y, x+w, y+h, rr);
+    c.arcTo(x+w, y+h, x, y+h, rr);
+    c.arcTo(x, y+h, x, y, rr);
+    c.arcTo(x, y, x+w, y, rr);
+    c.closePath();
+  }
+
+  // mouse
   canvas.addEventListener('mousemove', (e) => {
     const r = canvas.getBoundingClientRect();
     mouse.x = (e.clientX - r.left) * (canvas.width / r.width);
     mouse.y = (e.clientY - r.top) * (canvas.height / r.height);
-    mouse.inside = true;
-  });
-  canvas.addEventListener('mouseleave', () => { mouse.inside = false; });
-
-  canvas.addEventListener('click', () => {
-    if(mode.value === 'toggle') showEmptyAll = !showEmptyAll;
   });
 
-  radius.addEventListener('input', () => radiusLabel.textContent = radius.value);
-  feather.addEventListener('input', () => featherLabel.textContent = feather.value);
+  function syncLabels(){
+    phoneWLabel.textContent = phoneW.value;
+    dxLabel.textContent = dx.value;
+    dyLabel.textContent = dy.value;
+    scaleLabel.textContent = (Number(scale.value)/100).toFixed(2);
+  }
+  [phoneW, dx, dy, scale].forEach(el => el.addEventListener('input', syncLabels));
 
   fitBtn.addEventListener('click', () => {
     resizeCanvasToFit();
     setStatus('キャンバスサイズを更新しました。');
   });
 
+  resetAlignBtn.addEventListener('click', () => {
+    dx.value = 0; dy.value = 0; scale.value = 100;
+    syncLabels();
+    setStatus('位置合わせをリセットしました。');
+  });
+
   downloadBtn.addEventListener('click', () => {
     const a = document.createElement('a');
-    a.download = 'portal_demo.png';
+    a.download = 'portal_phone_fixed.png';
     a.href = canvas.toDataURL('image/png');
     a.click();
   });
 
-  crowdFile.addEventListener('change', () => {
-    loadImageFromFile(crowdFile, crowdImg, () => {
-      hasCrowd = true;
-      resizeCanvasToFit();
-      setStatus('人混み画像を読み込みました。次に無人画像を読み込むと比較できます。');
-    });
+  // keyboard shortcuts
+  window.addEventListener('keydown', (e) => {
+    const step = 5;
+    if(e.key === '['){ phoneW.value = Math.max(Number(phoneW.min), Number(phoneW.value) - step); syncLabels(); }
+    if(e.key === ']'){ phoneW.value = Math.min(Number(phoneW.max), Number(phoneW.value) + step); syncLabels(); }
   });
 
-  emptyFile.addEventListener('change', () => {
-    loadImageFromFile(emptyFile, emptyImg, () => {
-      hasEmpty = true;
-      resizeCanvasToFit();
-      setStatus('無人画像（Clean Plate）を読み込みました。キャンバス上でカーソルを動かしてください。');
-    });
-  });
+  // load fixed images
+  function loadAll(){
+    let loaded = 0;
+    const onOneLoaded = () => {
+      loaded += 1;
+      if(loaded === 2){
+        hasCrowd = true;
+        hasEmpty = true;
+        resizeCanvasToFit();
+        syncLabels();
+        setStatus('準備完了：キャンバス上でカーソルを動かしてください。');
+      }
+    };
 
-  // init labels
-  radiusLabel.textContent = radius.value;
-  featherLabel.textContent = feather.value;
+    crowdImg.onload = onOneLoaded;
+    emptyImg.onload = onOneLoaded;
 
+    crowdImg.onerror = () => setStatus('人混み画像の読み込みに失敗しました：' + CROWD_SRC);
+    emptyImg.onerror = () => setStatus('無人画像の読み込みに失敗しました：' + CLEANPLATE_SRC);
+
+    crowdImg.src = CROWD_SRC;
+    emptyImg.src = CLEANPLATE_SRC;
+  }
+
+  syncLabels();
+  loadAll();
   draw();
 })();
 </script>
